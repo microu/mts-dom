@@ -47,7 +47,7 @@ export function classNames(arg: TClassNamesArg, asArray?: boolean): string[] | s
 }
 export const $C = classNames;
 
-export function toogleClasses(elt: Element, remove?: string | string[], add?: string | string[]) {
+export function toogleClasses(elt: Element, remove?: TClassNamesArg, add?: TClassNamesArg) {
   const _remove = classNames(remove, true);
   const _add = classNames(add, true);
   for (const c of _remove) {

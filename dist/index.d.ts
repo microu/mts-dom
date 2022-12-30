@@ -1,10 +1,27 @@
+declare const namespaceURI: {
+    xhtml: string;
+    svg: string;
+};
+declare function fragmentFromHTML(html: string, cleanup?: boolean): DocumentFragment;
+declare function wrapDocumentFragment(df: DocumentFragment | string, options?: {
+    wrapTag?: string;
+    eltOnly?: boolean;
+    wrapSingle?: boolean;
+}): Element;
+declare function cleanupChildNodes(parent: Node, nodeFilter?: (n: Node) => boolean): void;
+declare namespace cleanupChildNodes {
+    var HTMLOrNonBlankText: (n: Node) => boolean;
+    var HTML: (n: Node) => boolean;
+}
+declare function removeAllChildren(parent: Node): void;
+
 type TClassNamesArg = null | undefined | string | string[];
 declare function isClassNamesArg(arg: any): arg is TClassNamesArg;
 declare function classNames(arg: TClassNamesArg): string;
 declare function classNames(arg: TClassNamesArg, asArray: false): string;
 declare function classNames(arg: TClassNamesArg, asArray: true): string[];
 declare const $C: typeof classNames;
-declare function toogleClasses(elt: Element, remove?: string | string[], add?: string | string[]): Element;
+declare function toogleClasses(elt: Element, remove?: TClassNamesArg, add?: TClassNamesArg): Element;
 
 type TCreateElementArg = {
     html?: string;
@@ -23,4 +40,4 @@ declare function createElement(arg: TCreateElementArgExtended, attributes?: {
 } | null, children?: string | TCreateElementArgExtended[]): Element;
 declare const $E: typeof createElement;
 
-export { $C, $E, TClassNamesArg, TCreateElementArg, TCreateElementArgExtended, classNames, createElement, isClassNamesArg, toogleClasses };
+export { $C, $E, TClassNamesArg, TCreateElementArg, TCreateElementArgExtended, classNames, cleanupChildNodes, createElement, fragmentFromHTML, isClassNamesArg, namespaceURI, removeAllChildren, toogleClasses, wrapDocumentFragment };

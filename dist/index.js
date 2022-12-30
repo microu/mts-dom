@@ -1,59 +1,3 @@
-const elementWithClassAttributeRE = /^<\w+.*\sclass="([^"]*)"/;
-function isClassNamesArg(arg) {
-    if (arg === undefined || arg === null || typeof arg === "string") {
-        return true;
-    }
-    else if (arg instanceof Array) {
-        return arg.length > 0 ? typeof arg[0] === "string" : true;
-    }
-    return false;
-}
-function classNames(arg, asArray) {
-    let classes;
-    if (typeof arg == "string") {
-        const m = elementWithClassAttributeRE.exec(arg);
-        if (m) {
-            classes = m[1]
-                .trim()
-                .split(/\s+/)
-                .filter((c) => c != "");
-        }
-        else {
-            if (arg.startsWith("<")) {
-                classes = [];
-            }
-            else {
-                classes = arg.split(/\s+/).filter((c) => c != "");
-            }
-        }
-    }
-    else if (arg == undefined || arg == null) {
-        classes = [];
-    }
-    else {
-        classes = arg;
-    }
-    classes = classes.map((name) => name.trim());
-    if (asArray) {
-        return classes;
-    }
-    else {
-        return classes.join(" ");
-    }
-}
-const $C = classNames;
-function toogleClasses(elt, remove, add) {
-    const _remove = classNames(remove, true);
-    const _add = classNames(add, true);
-    for (const c of _remove) {
-        elt.classList.remove(c);
-    }
-    for (const c of _add) {
-        elt.classList.add(c);
-    }
-    return elt;
-}
-
 const namespaceURI = {
     xhtml: "http://www.w3.org/1999/xhtml",
     svg: "http://www.w3.org/2000/svg",
@@ -113,6 +57,67 @@ cleanupChildNodes.HTMLOrNonBlankText = (n) => {
 cleanupChildNodes.HTML = (n) => {
     return n instanceof Element;
 };
+function removeAllChildren(parent) {
+    while (parent.firstChild) {
+        parent.removeChild(parent.firstChild);
+    }
+}
+
+const elementWithClassAttributeRE = /^<\w+.*\sclass="([^"]*)"/;
+function isClassNamesArg(arg) {
+    if (arg === undefined || arg === null || typeof arg === "string") {
+        return true;
+    }
+    else if (arg instanceof Array) {
+        return arg.length > 0 ? typeof arg[0] === "string" : true;
+    }
+    return false;
+}
+function classNames(arg, asArray) {
+    let classes;
+    if (typeof arg == "string") {
+        const m = elementWithClassAttributeRE.exec(arg);
+        if (m) {
+            classes = m[1]
+                .trim()
+                .split(/\s+/)
+                .filter((c) => c != "");
+        }
+        else {
+            if (arg.startsWith("<")) {
+                classes = [];
+            }
+            else {
+                classes = arg.split(/\s+/).filter((c) => c != "");
+            }
+        }
+    }
+    else if (arg == undefined || arg == null) {
+        classes = [];
+    }
+    else {
+        classes = arg;
+    }
+    classes = classes.map((name) => name.trim());
+    if (asArray) {
+        return classes;
+    }
+    else {
+        return classes.join(" ");
+    }
+}
+const $C = classNames;
+function toogleClasses(elt, remove, add) {
+    const _remove = classNames(remove, true);
+    const _add = classNames(add, true);
+    for (const c of _remove) {
+        elt.classList.remove(c);
+    }
+    for (const c of _add) {
+        elt.classList.add(c);
+    }
+    return elt;
+}
 
 const namespaceShortcuts = {
     "!svg": namespaceURI.svg,
@@ -217,4 +222,4 @@ function createElement(arg, attributes, children) {
 }
 const $E = createElement;
 
-export { $C, $E, classNames, createElement, isClassNamesArg, toogleClasses };
+export { $C, $E, classNames, cleanupChildNodes, createElement, fragmentFromHTML, isClassNamesArg, namespaceURI, removeAllChildren, toogleClasses, wrapDocumentFragment };

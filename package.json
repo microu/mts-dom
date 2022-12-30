@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "build": "rollup -c rollup.config.js",
-    "build:version": "node scripts/build_version.js",
     "test": "jest"
   },
   "author": "Microu",
@@ -15,6 +14,7 @@
     "@rollup/plugin-typescript": "^10.0.1",
     "@types/jest": "^29.2.4",
     "jest": "^29.3.1",
+    "jest-environment-jsdom": "^29.3.1",
     "rollup": "^3.7.5",
     "rollup-plugin-copy": "^3.4.0",
     "rollup-plugin-delete": "^2.0.0",

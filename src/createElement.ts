@@ -1,5 +1,5 @@
 import { classNames } from "./classNames.js";
-import { fragmentFromHTML, namespaceURI, wrapDocumentFragment } from "./htmlUtils.js";
+import { fragmentFromHTML, namespaceURI, wrapDocumentFragment } from "./utils.js";
 
 export type TCreateElementArg = {
   html?: string;
