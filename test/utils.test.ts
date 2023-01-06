@@ -1,7 +1,11 @@
 import {
   cleanupChildNodes,
   fragmentFromHTML,
+  fragmentFromSVG,
+  namespaceURI,
+  NodeFilters,
   wrapDocumentFragment,
+  wrapSVGFragment,
 } from "../src/index.js";
 
 describe("fragmentFromHtml", () => {
@@ -34,6 +38,33 @@ describe("fragmentFromHtml", () => {
   });
 });
 
+describe("fragmentSVG", () => {
+  test("Basic usage", () => {
+    const svg = `
+    <circle cx="10", cy="10" r="5"/>
+
+
+    <rect x="20", y="21" width="65" height="130"/>
+    
+    
+    `;
+
+    let df = fragmentFromSVG(svg);
+    expect(df.childNodes.length).toBe(2);
+    expect(df.children.length).toBe(2);
+    expect(df.children[0].tagName).toBe("circle");
+    expect(df.children[0].namespaceURI).toBe(namespaceURI.svg);
+    expect(df.children[1].tagName).toBe("rect");
+    expect(df.children[1].namespaceURI).toBe(namespaceURI.svg);
+  });
+
+  test("from empty string", () => {
+    const df = fragmentFromSVG("");
+    expect(df.children.length).toBe(0);
+    expect(df.childNodes.length).toBe(0);
+  });
+});
+
 describe("cleanupDocumentFragment", () => {
   test("default cleanup (non HtmlElement and non blank text)", () => {
     const df = fragmentFromHTML(`
@@ -50,8 +81,7 @@ describe("cleanupDocumentFragment", () => {
     expect(df.children.length).toBe(3);
   });
 
-
-  test("kepp HTML Element", () => {
+  test("keep HTML Element", () => {
     const df = fragmentFromHTML(`
     aaa
     <header>HEADER</header>
@@ -64,15 +94,14 @@ describe("cleanupDocumentFragment", () => {
     expect(df.childNodes.length).toBeGreaterThanOrEqual(7);
     expect(df.children.length).toBe(3);
 
-    cleanupChildNodes(df, cleanupChildNodes.HTML);
+    cleanupChildNodes(df, NodeFilters.element);
     expect(df.childNodes.length).toBe(3);
     expect(df.children.length).toBe(3);
-    for (let i=0; i< df.children.length; i+=1) {
-      let child = df.children[i]
-      expect(child.tagName).toBe(child.textContent)
+    for (let i = 0; i < df.children.length; i += 1) {
+      let child = df.children[i];
+      expect(child.tagName).toBe(child.textContent);
     }
   });
-
 
   test("custom cleanup", () => {
     const df = fragmentFromHTML(`
@@ -87,7 +116,7 @@ describe("cleanupDocumentFragment", () => {
     `);
     expect(df.childNodes.length).toBeGreaterThan(8);
     expect(df.children.length).toBe(5);
-    
+
     cleanupChildNodes(df);
     expect(df.childNodes.length).toBe(8);
     expect(df.children.length).toBe(5);
@@ -120,7 +149,7 @@ describe("wrapDocumentFragment", () => {
   `);
 
     const elt = wrapDocumentFragment(df, {
-      eltOnly: false,
+      cleanup: false,
     });
     expect(elt.tagName).toBe("DIV");
     expect(elt.childNodes.length).toBeGreaterThan(5);
@@ -153,7 +182,7 @@ describe("wrapDocumentFragment", () => {
     let elt = wrapDocumentFragment(html);
     expect(elt.tagName).toBe("UL");
 
-    elt = wrapDocumentFragment(html, { wrapSingle: true, eltOnly: true });
+    elt = wrapDocumentFragment(html, { wrapSingle: true, cleanup: true });
     expect(elt.tagName).toBe("DIV");
     expect(elt.childNodes.length).toBe(1);
     expect((<HTMLElement>elt.childNodes[0]).tagName).toBe("UL");
@@ -180,12 +209,32 @@ describe("wrapDocumentFragment", () => {
 </ul>`;
 
   test("Wrap from text", () => {
-    let elt = wrapDocumentFragment(ulHTML)
-    for(let i =0; i< elt.childNodes.length; i+=1) {
-    }
+    let elt = wrapDocumentFragment(ulHTML);
+    for (let i = 0; i < elt.childNodes.length; i += 1) {}
     // cleanupChildNodes(elt)
-    expect(elt.tagName).toBe("UL")
-    expect(elt.children.length).toBe(5)
-    expect(elt.childNodes.length).toBe(5)
+    expect(elt.tagName).toBe("UL");
+    expect(elt.children.length).toBe(5);
+    expect(elt.childNodes.length).toBe(5);
+  });
+});
+
+describe("wrapSVGFragment", () => {
+  test("Basic usage", () => {
+    const df = fragmentFromSVG(`
+    <circle cx="0" cy="0" r="1"/>
+    <circle cx="1" cy="1" r="2"/>
+    <circle cx="2" cy="2" r="3"/>
+    `);
+
+    const elt = wrapSVGFragment(df);
+    expect(elt.tagName).toBe("g");
+    expect(elt.childNodes.length).toBe(3);
+    for (let i = 0; i < 3; i += 1) {
+      const child = elt.childNodes[i];
+      expect(child).toBeInstanceOf(SVGElement);
+      const svgChild = child as SVGElement;
+      expect(svgChild.tagName).toBe("circle");
+      expect(svgChild.getAttribute("cx")).toEqual(i.toString());
+    }
   });
 });
