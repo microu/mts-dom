@@ -24,9 +24,8 @@ export function fragmentFromHTML(
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
   const df = <DocumentFragment>tpl.content.cloneNode(true);
-  if (cleanup === true) {
-    cleanupChildNodes(df, NodeFilters.elementOrNonBlankText);
-  } else if (cleanup) {
+  cleanup = cleanup === true ? NodeFilters.elementOrNonBlankText : cleanup;
+  if (cleanup) {
     cleanupChildNodes(df, cleanup);
   }
   return df;
@@ -48,45 +47,62 @@ export function wrapDocumentFragment(
     cleanup?: boolean | TNodeFilter;
   }
 ): Element {
-  const fragment = typeof df == "string" ? fragmentFromHTML(df) : df;
+  return _wrapFragment(df, false, options);
+}
+
+export function wrapSVGFragment(
+  df: DocumentFragment | string,
+  options?: {
+    wrapTag?: string;
+    wrapSingle?: boolean;
+    cleanup?: boolean | TNodeFilter;
+  }
+): Element {
+  return _wrapFragment(df, true, options);
+}
+
+function _wrapFragment(
+  df: DocumentFragment | string,
+  svgMode: boolean,
+  options?: {
+    wrapTag?: string;
+    wrapSingle?: boolean;
+    cleanup?: boolean | TNodeFilter;
+  }
+): Element {
+  let fragment: DocumentFragment;
+  if (svgMode) {
+    fragment = typeof df == "string" ? fragmentFromSVG(df) : df;
+  } else {
+    fragment = typeof df == "string" ? fragmentFromHTML(df) : df;
+  }
+
   const _options = {
-    wrapTag: "div",
+    wrapTag: svgMode ? "g" : "div",
     wrapSingle: false,
     cleanup: true,
   };
   Object.assign(_options, options);
-  
-  const cleanup = _options.cleanup === true ? NodeFilters.elementOrNonBlankText : undefined
 
-  if (cleanup) {
-    cleanupChildNodes(fragment, cleanup);
-    if (fragment.childNodes.length == 1) {
-      cleanupChildNodes(fragment.firstElementChild!, cleanup);
-    }
-  }
+  let result = <Element>fragment.firstElementChild;
 
   if (_options.wrapSingle || fragment.children.length != 1) {
-    const wrapper = document.createElement(_options.wrapTag);
+    const wrapper = svgMode
+      ? document.createElementNS(namespaceURI.svg, _options.wrapTag)
+      : document.createElement(_options.wrapTag);
     wrapper.append(fragment);
-    return wrapper;
-  } else {
-    return <Element>fragment.firstElementChild;
+    result = wrapper;
   }
-}
 
-export function wrapSVGFragment(df: DocumentFragment | string): Element {
-  const fragment = typeof df == "string" ? fragmentFromSVG(df) : df;
+  const cleanup =
+    _options.cleanup === true
+      ? NodeFilters.elementOrNonBlankText
+      : _options.cleanup;
+  if (cleanup) {
+    cleanupChildNodes(result, cleanup);
+  }
 
-  for (const child of fragment.children) {
-    console.log("FRAGMENT CHILD:", child.tagName, child.namespaceURI);
-  }
-  if (fragment.children.length != 1) {
-    const wrapper = document.createElementNS(namespaceURI.svg, "g");
-    wrapper.append(fragment);
-    return wrapper;
-  } else {
-    return <Element>fragment.firstElementChild;
-  }
+  return result;
 }
 
 export function cleanupChildNodes(parent: Node, nodeFilter?: TNodeFilter) {
