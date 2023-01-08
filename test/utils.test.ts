@@ -228,7 +228,7 @@ describe("fragmentFromHtml", () => {
 });
 
 //======
-describe("fragmentSVG", () => {
+describe("fragmentFromSVG", () => {
   test("Basic usage", () => {
     const svg = `
     <circle cx="10", cy="10" r="5"/>

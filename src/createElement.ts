@@ -7,17 +7,14 @@ import {
 export type TCreateElementArg = {
   html?: string;
   svg?: string;
-  tag?: string;
-  attributes?: { [keys: string]: string };
+  element?: Element;
   children?: TCreateElementArgExtended[];
-  classes?: string | string[];
 };
 
 export type TCreateElementArgExtended = string | Element | TCreateElementArg;
 
 export function createElement(
   arg: TCreateElementArgExtended,
-  attributes?: { [keys: string]: string } | null,
   children?: TCreateElementArgExtended[]
 ): Element {
   let element: Element | undefined = undefined;
@@ -30,8 +27,8 @@ export function createElement(
       arg = "<div></div>";
     }
     // handle string cases
-    if (arg.startsWith("<svg!")) {
-      _arg = { svg: "<" + arg.slice(5) };
+    if (arg.startsWith("!svg!")) {
+      _arg = { svg: arg.slice(5) };
     } else if (arg.startsWith("<svg")) {
       _arg = { svg: arg };
     } else if (arg.startsWith("<")) {
@@ -39,12 +36,17 @@ export function createElement(
     } else {
       _arg = { html: `<p>${arg}</p>` };
     }
-    element = createElementBase(_arg);
   } else if (arg instanceof Element) {
-    element = arg;
+    _arg = { element: arg };
   } else {
-    element = createElementBase(arg);
+    _arg = arg;
   }
+
+  if (children) {
+    _arg.children = [...(_arg.children == undefined ? [] : _arg.children), ...children]
+
+  }
+  element = createElementBase(_arg);
 
   return element;
 }
@@ -52,30 +54,28 @@ export function createElement(
 export function createElementBase(arg: TCreateElementArg): Element {
   let element: Element | undefined = undefined;
 
-  if (arg.html != undefined) {
-    element = wrapDocumentFragment(arg.html);
+  if (arg.element != undefined) {
+    element = arg.element;
   }
 
-  if (arg.tag != undefined) {
+  if (arg.html != undefined) {
     if (element != undefined) {
-      throw new ErrorEvent(`Element already defined using "html"`);
+      throw new ErrorEvent(`Element already defined using "arg.element"`);
     }
-    if (arg.tag.startsWith("svg!")) {
-      element = document.createElementNS(namespaceURI.svg, arg.tag.slice(4));
-    } else {
-      element = document.createElement(arg.tag);
-    }
+    element = wrapDocumentFragment(arg.html);
   }
 
   if (arg.svg != undefined) {
     if (element != undefined) {
-      throw new ErrorEvent(`Element already defined using "html" or "tag"`);
+      throw new ErrorEvent(
+        `Element already defined using arg.html or arg.element `
+      );
     }
     element = wrapSVGFragment(arg.svg);
   }
 
   if (element == undefined) {
-    throw new Error("Either arg.html or arg.tag or arg.svg must be defined");
+    throw new Error("Either arg.html, arg.svg or arg.element must be defined");
   }
 
   return element;
