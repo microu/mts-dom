@@ -430,4 +430,67 @@ describe("wrapSVGFragment", () => {
       expect(svgChild.getAttribute("cx")).toEqual(i.toString());
     }
   });
+
+  test("Wrap empty fragment", () => {
+    const elt = wrapSVGFragment(document.createDocumentFragment());
+    expect(elt.tagName).toEqual("g");
+    expect(elt.namespaceURI).toEqual(namespaceURI.svg);
+    expect(elt.childNodes.length).toEqual(0);
+  });
+
+  test("Wrap single element", () => {
+    const svg = `<circle cx="0" cy="0" r=1 />`;
+
+    let elt = wrapSVGFragment(svg);
+    expect(elt.tagName).toEqual("circle");
+    expect(elt.namespaceURI).toEqual(namespaceURI.svg);
+    expect(elt.childNodes.length).toEqual(0);
+
+    elt = wrapSVGFragment(svg, { wrapSingle: true });
+    expect(elt.tagName).toEqual("g");
+    expect(elt.namespaceURI).toEqual(namespaceURI.svg);
+    expect(elt.childNodes.length).toEqual(1);
+    expect(elt.firstElementChild!.tagName).toEqual("circle");
+    expect(elt.firstElementChild!.namespaceURI).toEqual(namespaceURI.svg);
+  });
+
+  test("Custom cleanup", () => {
+    const svg = `
+    <circle cx="0" cy="0" r="1"/>
+    <rect x="0" cy="0" width="100" height="30"/>
+    <circle cx="2" cy="2" r="3"/>
+    `;
+
+    let elt = wrapSVGFragment(svg);
+    expect(elt.tagName).toEqual("g");
+    expect(elt.namespaceURI).toEqual(namespaceURI.svg);
+    expect(elt.children.length).toEqual(3);
+
+    elt = wrapSVGFragment(svg, {
+      cleanup: (node) => node instanceof Element && node.tagName != "rect",
+    });
+    expect(elt.tagName).toEqual("g");
+    expect(elt.namespaceURI).toEqual(namespaceURI.svg);
+    expect(elt.children.length).toEqual(2);
+    for (const child of elt.children) {
+      expect(child.tagName).toEqual("circle");
+      expect(child.namespaceURI).toEqual(namespaceURI.svg);
+    }
+  });
+
+  test("Custom cleanup. Single remaining child is wrapped", () => {
+    const svg = `
+    <circle cx="0" cy="0" r="1"/>
+    <rect x="0" cy="0" width="100" height="30"/>
+    <circle cx="2" cy="2" r="3"/>
+    `;
+    let elt = wrapSVGFragment(svg, {
+      cleanup: (node) => node instanceof Element && node.tagName == "rect",
+    });
+    expect(elt.tagName).toEqual("g");
+    expect(elt.children.length).toEqual(1);
+    expect(elt.firstElementChild?.tagName).toEqual("rect");
+    expect(elt.firstElementChild?.namespaceURI).toEqual(namespaceURI.svg);
+
+  });
 });
