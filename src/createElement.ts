@@ -80,3 +80,5 @@ export function createElementBase(arg: TCreateElementArg): Element {
 
   return element;
 }
+
+export const $E = createElement;

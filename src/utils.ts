@@ -17,6 +17,31 @@ export const NodeFilters: { [name: string]: TNodeFilter } = {
   },
 };
 
+export function cleanupChildNodes(parent: Node, nodeFilter?: TNodeFilter) {
+  if (nodeFilter === undefined) {
+    nodeFilter = NodeFilters.elementOrNonBlankText;
+  }
+
+  const nodesToDelete: ChildNode[] = [];
+
+  for (let i = 0; i < parent.childNodes.length; i++) {
+    let child = parent.childNodes[i];
+    if (!nodeFilter(child)) {
+      nodesToDelete.push(child);
+    }
+  }
+
+  for (const child of nodesToDelete) {
+    parent.removeChild(child);
+  }
+}
+
+export function removeAllChildren(parent: Node) {
+  while (parent.firstChild) {
+    parent.removeChild(parent.firstChild);
+  }
+}
+
 export function fragmentFromHTML(
   html: string,
   cleanup?: boolean | TNodeFilter
@@ -31,11 +56,15 @@ export function fragmentFromHTML(
   return df;
 }
 
-export function fragmentFromSVG(svg: string) {
+export function fragmentFromSVG(svg: string, cleanup?: boolean | TNodeFilter) {
   const g = document.createElementNS(namespaceURI.svg, "g");
   g.innerHTML = svg;
   const df = document.createDocumentFragment();
   df.append(...g.children);
+  cleanup = cleanup === true ? NodeFilters.elementOrNonBlankText : cleanup;
+  if (cleanup) {
+    cleanupChildNodes(df, cleanup);
+  }
   return df;
 }
 
@@ -103,29 +132,4 @@ function _wrapFragment(
   }
 
   return result;
-}
-
-export function cleanupChildNodes(parent: Node, nodeFilter?: TNodeFilter) {
-  if (nodeFilter === undefined) {
-    nodeFilter = NodeFilters.elementOrNonBlankText;
-  }
-
-  const nodesToDelete: ChildNode[] = [];
-
-  for (let i = 0; i < parent.childNodes.length; i++) {
-    let child = parent.childNodes[i];
-    if (!nodeFilter(child)) {
-      nodesToDelete.push(child);
-    }
-  }
-
-  for (const child of nodesToDelete) {
-    parent.removeChild(child);
-  }
-}
-
-export function removeAllChildren(parent: Node) {
-  while (parent.firstChild) {
-    parent.removeChild(parent.firstChild);
-  }
 }
