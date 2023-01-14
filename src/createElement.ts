@@ -43,8 +43,10 @@ export function createElement(
   }
 
   if (children) {
-    _arg.children = [...(_arg.children == undefined ? [] : _arg.children), ...children]
-
+    _arg.children = [
+      ...(_arg.children == undefined ? [] : _arg.children),
+      ...children,
+    ];
   }
   element = createElementBase(_arg);
 
@@ -78,6 +80,23 @@ export function createElementBase(arg: TCreateElementArg): Element {
     throw new Error("Either arg.html, arg.svg or arg.element must be defined");
   }
 
+  // Handle children
+  if (arg.children != undefined) {
+    if (arg.svg != undefined) {
+      arg.children = arg.children.map((child: TCreateElementArgExtended) => {
+        if (typeof child == "string") {
+          return { svg: child };
+        } else {
+          return child;
+        }
+      });
+    }
+
+    for (const childArg of arg.children) {
+      const childElement = createElement(childArg)
+      element.appendChild(childElement)
+    }
+  }
   return element;
 }
 
