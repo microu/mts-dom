@@ -5,6 +5,14 @@ test("$E is createElement", () => {
 });
 
 describe("createElement - string arg call patterns", () => {
+  test("from empty string", () => {
+    const elt = createElement("");
+    expect(elt.tagName).toEqual("DIV");
+    expect(elt.namespaceURI).toEqual(namespaceURI.xhtml);
+    expect(elt.childNodes.length).toEqual(0);
+    expect(elt.children.length).toEqual(0);
+  });
+
   test("create <p> element from text", () => {
     const elt = createElement("One, two, three.");
     expect(elt.tagName).toEqual("P");
@@ -315,7 +323,25 @@ describe("createElement with children", () => {
       expect(child.id).toEqual(`circle${index}`);
       index += 1;
     }
+  });
 
+  test("HTML children defined on arg object and children args", () => {
+    const ul = $E(
+      {
+        html: `<ul></ul>`,
+        children: ["<li>1</li>", "<li>2</li>"],
+      },
+      ["<li>3</li>", "<li>4</li>", "<li>5</li>"]
+    );
 
+    expect(ul.tagName).toEqual("UL");
+    expect(ul.children.length).toEqual(5);
+    let value = 1;
+    for (const child of ul.children) {
+      expect(child.tagName).toEqual("LI");
+      expect(child.namespaceURI).toEqual(namespaceURI.xhtml);
+      expect(parseInt(child.textContent!)).toEqual(value);
+      value += 1;
+    }
   });
 });
