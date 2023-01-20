@@ -2,42 +2,18 @@ const namespaceURI = {
     xhtml: "http://www.w3.org/1999/xhtml",
     svg: "http://www.w3.org/2000/svg",
 };
-function fragmentFromHTML(html, cleanup) {
-    const tpl = document.createElement("template");
-    tpl.innerHTML = html;
-    const df = tpl.content.cloneNode(true);
-    if (cleanup) {
-        cleanupChildNodes(df);
-    }
-    return df;
-}
-function wrapDocumentFragment(df, options) {
-    const fragment = typeof df == "string" ? fragmentFromHTML(df) : df;
-    const _options = {
-        wrapTag: "div",
-        eltOnly: true,
-        wrapSingle: false,
-    };
-    Object.assign(_options, options);
-    const { wrapTag, eltOnly, wrapSingle } = _options;
-    if (eltOnly) {
-        cleanupChildNodes(fragment);
-        if (fragment.childNodes.length == 1) {
-            cleanupChildNodes(fragment.firstElementChild);
-        }
-    }
-    if (wrapSingle || fragment.children.length != 1) {
-        const wrapper = document.createElement(wrapTag);
-        wrapper.append(fragment);
-        return wrapper;
-    }
-    else {
-        return fragment.firstElementChild;
-    }
-}
+const NodeFilters = {
+    elementOrNonBlankText: (n) => {
+        var _a;
+        return (n instanceof Element || (n instanceof Text && ((_a = n.textContent) === null || _a === void 0 ? void 0 : _a.trim()) != ""));
+    },
+    element: (n) => {
+        return n instanceof Element;
+    },
+};
 function cleanupChildNodes(parent, nodeFilter) {
-    if (!nodeFilter) {
-        nodeFilter = cleanupChildNodes.HTMLOrNonBlankText;
+    if (nodeFilter === undefined) {
+        nodeFilter = NodeFilters.elementOrNonBlankText;
     }
     const nodesToDelete = [];
     for (let i = 0; i < parent.childNodes.length; i++) {
@@ -50,17 +26,67 @@ function cleanupChildNodes(parent, nodeFilter) {
         parent.removeChild(child);
     }
 }
-cleanupChildNodes.HTMLOrNonBlankText = (n) => {
-    var _a;
-    return (n instanceof Element || (n instanceof Text && ((_a = n.textContent) === null || _a === void 0 ? void 0 : _a.trim()) != ""));
-};
-cleanupChildNodes.HTML = (n) => {
-    return n instanceof Element;
-};
 function removeAllChildren(parent) {
     while (parent.firstChild) {
         parent.removeChild(parent.firstChild);
     }
+}
+function fragmentFromHTML(html, cleanup) {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = html;
+    const df = tpl.content.cloneNode(true);
+    cleanup = cleanup === true ? NodeFilters.elementOrNonBlankText : cleanup;
+    if (cleanup) {
+        cleanupChildNodes(df, cleanup);
+    }
+    return df;
+}
+function fragmentFromSVG(svg, cleanup) {
+    const g = document.createElementNS(namespaceURI.svg, "g");
+    g.innerHTML = svg;
+    const df = document.createDocumentFragment();
+    df.append(...g.children);
+    cleanup = cleanup === true ? NodeFilters.elementOrNonBlankText : cleanup;
+    if (cleanup) {
+        cleanupChildNodes(df, cleanup);
+    }
+    return df;
+}
+function wrapDocumentFragment(df, options) {
+    return _wrapFragment(df, false, options);
+}
+function wrapSVGFragment(df, options) {
+    return _wrapFragment(df, true, options);
+}
+function _wrapFragment(df, svgMode, options) {
+    let fragment;
+    if (svgMode) {
+        fragment = typeof df == "string" ? fragmentFromSVG(df) : df;
+    }
+    else {
+        fragment = typeof df == "string" ? fragmentFromHTML(df) : df;
+    }
+    const _options = {
+        wrapTag: svgMode ? "g" : "div",
+        wrapSingle: false,
+        cleanup: true,
+    };
+    Object.assign(_options, options);
+    let result = fragment.firstElementChild;
+    if (_options.wrapSingle || fragment.children.length != 1) {
+        const wrapper = svgMode
+            ? document.createElementNS(namespaceURI.svg, _options.wrapTag)
+            : document.createElement(_options.wrapTag);
+        wrapper.append(fragment);
+        result = wrapper;
+    }
+    const cleanup = _options.cleanup === true
+        ? NodeFilters.elementOrNonBlankText
+        : _options.cleanup;
+    if (cleanup) {
+        cleanupChildNodes(result, cleanup);
+    }
+    return result;
 }
 
 const elementWithClassAttributeRE = /^<\w+.*\sclass="([^"]*)"/;
@@ -119,12 +145,91 @@ function toogleClasses(elt, remove, add) {
     return elt;
 }
 
+function createElement(arg, children) {
+    let element = undefined;
+    let _arg;
+    if (typeof arg == "string") {
+        // normalize string arg
+        arg = arg.trim();
+        if (arg.length == 0) {
+            arg = "<div></div>";
+        }
+        // handle string cases
+        if (arg.startsWith("!svg!")) {
+            _arg = { svg: arg.slice(5) };
+        }
+        else if (arg.startsWith("<svg")) {
+            _arg = { svg: arg };
+        }
+        else if (arg.startsWith("<")) {
+            _arg = { html: arg };
+        }
+        else {
+            _arg = { html: `<p>${arg}</p>` };
+        }
+    }
+    else if (arg instanceof Element) {
+        _arg = { element: arg };
+    }
+    else {
+        _arg = arg;
+    }
+    if (children) {
+        _arg.children = [
+            ...(_arg.children == undefined ? [] : _arg.children),
+            ...children,
+        ];
+    }
+    element = createElementBase(_arg);
+    return element;
+}
+function createElementBase(arg) {
+    let element = undefined;
+    if (arg.element != undefined) {
+        element = arg.element;
+    }
+    if (arg.html != undefined) {
+        if (element != undefined) {
+            throw new ErrorEvent(`Element already defined using "arg.element"`);
+        }
+        element = wrapDocumentFragment(arg.html);
+    }
+    if (arg.svg != undefined) {
+        if (element != undefined) {
+            throw new ErrorEvent(`Element already defined using arg.html or arg.element `);
+        }
+        element = wrapSVGFragment(arg.svg);
+    }
+    if (element == undefined) {
+        throw new Error("Either arg.html, arg.svg or arg.element must be defined");
+    }
+    // Handle children
+    if (arg.children != undefined) {
+        if (arg.svg != undefined) {
+            arg.children = arg.children.map((child) => {
+                if (typeof child == "string") {
+                    return { svg: child };
+                }
+                else {
+                    return child;
+                }
+            });
+        }
+        for (const childArg of arg.children) {
+            const childElement = createElement(childArg);
+            element.appendChild(childElement);
+        }
+    }
+    return element;
+}
+const $E = createElement;
+
 const namespaceShortcuts = {
     "!svg": namespaceURI.svg,
     "!xhtml": namespaceURI.xhtml,
     "!html": namespaceURI.xhtml,
 };
-function createElement(arg, attributes, children) {
+function createElement0(arg, attributes, children) {
     let element = undefined;
     let _arg;
     if (typeof arg == "string") {
@@ -174,7 +279,7 @@ function createElement(arg, attributes, children) {
         }
     }
     if (element == undefined && _arg.html == undefined && _arg.tag == undefined) {
-        throw new Error(`Either arg.html or arg.tag must be defined`);
+        throw new Error(`ut`);
     }
     if (_arg.html != undefined && _arg.namespace != undefined) {
         throw new Error(`One can't use arg.namespace on an element defined by arg.html. If needed the namespace has to be defiined in the HTML source.`);
@@ -207,7 +312,7 @@ function createElement(arg, attributes, children) {
     }
     else {
         for (const child of _arg.children) {
-            element.appendChild(createElement(child));
+            element.appendChild(createElement0(child));
         }
     }
     if (_arg.classes != undefined) {
@@ -220,6 +325,6 @@ function createElement(arg, attributes, children) {
     }
     return element;
 }
-const $E = createElement;
+const $E0 = createElement0;
 
-export { $C, $E, classNames, cleanupChildNodes, createElement, fragmentFromHTML, isClassNamesArg, namespaceURI, removeAllChildren, toogleClasses, wrapDocumentFragment };
+export { $C, $E, $E0, NodeFilters, classNames, cleanupChildNodes, createElement, createElement0, createElementBase, fragmentFromHTML, fragmentFromSVG, isClassNamesArg, namespaceURI, removeAllChildren, toogleClasses, wrapDocumentFragment, wrapSVGFragment };
